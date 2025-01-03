@@ -7,54 +7,47 @@ declare global {
   };
 }
 
-let cached = global.mongoose;
-
-if (!cached) {
-  cached = global.mongoose = { conn: null, promise: null };
-}
+let isConnected = false;
 
 async function connectDB() {
+  if (isConnected) {
+    return;
+  }
+
   if (!process.env.MONGODB_URI) {
-    throw new Error('Please define the MONGODB_URI environment variable');
-  }
-
-  if (cached.conn) {
-    return cached.conn;
-  }
-
-  if (!cached.promise) {
-    const opts = {
-      directConnection: true,
-      serverSelectionTimeoutMS: 2000,
-      dbName: 'accounting-app'
-    };
-
-    // Only add event listeners once
-    if (!mongoose.connection.hasListeners('connected')) {
-      mongoose.connection.once('connected', () => {
-        console.log('MongoDB connected successfully');
-      });
-
-      mongoose.connection.once('error', (err) => {
-        console.error('MongoDB connection error:', err);
-      });
-
-      mongoose.connection.once('disconnected', () => {
-        console.log('MongoDB disconnected');
-      });
-    }
-
-    cached.promise = mongoose.connect(process.env.MONGODB_URI, opts);
+    throw new Error('Please define the MONGODB_URI environment variable inside .env');
   }
 
   try {
-    cached.conn = await cached.promise;
-  } catch (e) {
-    cached.promise = null;
-    throw e;
-  }
+    if (!global.mongoose) {
+      global.mongoose = { conn: null, promise: null };
+    }
 
-  return cached.conn;
+    if (!global.mongoose.promise) {
+      const opts = {
+        directConnection: true,
+        serverSelectionTimeoutMS: 2000,
+        dbName: 'accounting-app'
+      };
+
+      global.mongoose.promise = mongoose.connect(process.env.MONGODB_URI, opts);
+    }
+
+    global.mongoose.conn = await global.mongoose.promise;
+    isConnected = true;
+
+    // Only add event listeners once
+    if (!mongoose.connection.listenerCount('connected')) {
+      mongoose.connection.once('connected', () => {
+        console.log('MongoDB connected successfully');
+      });
+    }
+
+    return global.mongoose.conn;
+  } catch (error) {
+    console.error('MongoDB connection error:', error);
+    throw error;
+  }
 }
 
 export default connectDB;
