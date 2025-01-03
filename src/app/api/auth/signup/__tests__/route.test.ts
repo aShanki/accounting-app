@@ -1,102 +1,106 @@
 import { createMocks } from 'node-mocks-http';
-import mongoose from 'mongoose';
-import { POST as signupHandler } from '../route';
+import { POST as signupHandler } from '@/app/api/auth/signup/route';
 import User from '@/models/User';
 
-describe('Auth API - Signup', () => {
-  beforeAll(async () => {
-    if (!process.env.MONGODB_URI) {
-      process.env.MONGODB_URI = 'mongodb://localhost:27017/test_db';
-    }
-    await mongoose.connect(process.env.MONGODB_URI);
-  });
+describe('Auth API', () => {
+  describe('POST /api/auth/signup', () => {
+    it('should create a new user successfully', async () => {
+      const { req, res } = createMocks({
+        method: 'POST',
+        body: {
+          name: 'Test User',
+          email: 'test@example.com',
+          password: 'password123'
+        },
+      });
 
-  afterAll(async () => {
-    await mongoose.connection.dropDatabase();
-    await mongoose.connection.close();
-  });
+      await signupHandler(req);
 
-  beforeEach(async () => {
-    await User.deleteMany({});
-  });
+      const jsonResponse = await res._getJSONData();
+      expect(res._getStatusCode()).toBe(201);
+      expect(jsonResponse.user).toBeDefined();
+      expect(jsonResponse.user.email).toBe('test@example.com');
+      expect(jsonResponse.user.name).toBe('Test User');
+      expect(jsonResponse.user.password).toBeUndefined();
 
-  it('should create a new user successfully', async () => {
-    const testUser = {
-      name: 'Test User',
-      email: 'test@example.com',
-      password: 'password123'
-    };
-
-    const { req } = createMocks({
-      method: 'POST',
-      body: testUser
+      // Verify user was created in database
+      const user = await User.findOne({ email: 'test@example.com' });
+      expect(user).toBeTruthy();
+      expect(user?.name).toBe('Test User');
     });
 
-    const response = await signupHandler(req);
-    const data = await response.json();
+    it('should return 400 for missing required fields', async () => {
+      const { req, res } = createMocks({
+        method: 'POST',
+        body: {
+          email: 'test@example.com',
+          // missing name and password
+        },
+      });
 
-    expect(response.status).toBe(201);
-    expect(data.user).toBeDefined();
-    expect(data.user.email).toBe(testUser.email);
-    expect(data.user.name).toBe(testUser.name);
-    expect(data.user.password).toBeUndefined();
-  });
+      await signupHandler(req);
 
-  it('should reject invalid email', async () => {
-    const testUser = {
-      name: 'Test User',
-      email: 'invalid-email',
-      password: 'password123'
-    };
-
-    const { req } = createMocks({
-      method: 'POST',
-      body: testUser
+      expect(res._getStatusCode()).toBe(400);
+      const jsonResponse = await res._getJSONData();
+      expect(jsonResponse.error).toBe('Missing required fields');
     });
 
-    const response = await signupHandler(req);
-    expect(response.status).toBe(400);
-  });
+    it('should return 400 for invalid email format', async () => {
+      const { req, res } = createMocks({
+        method: 'POST',
+        body: {
+          name: 'Test User',
+          email: 'invalid-email',
+          password: 'password123'
+        },
+      });
 
-  it('should reject short passwords', async () => {
-    const testUser = {
-      name: 'Test User',
-      email: 'test@example.com',
-      password: '123'
-    };
+      await signupHandler(req);
 
-    const { req } = createMocks({
-      method: 'POST',
-      body: testUser
+      expect(res._getStatusCode()).toBe(400);
+      const jsonResponse = await res._getJSONData();
+      expect(jsonResponse.error).toBeDefined();
     });
 
-    const response = await signupHandler(req);
-    expect(response.status).toBe(400);
-  });
+    it('should return 400 for password too short', async () => {
+      const { req, res } = createMocks({
+        method: 'POST',
+        body: {
+          name: 'Test User',
+          email: 'test@example.com',
+          password: 'short'
+        },
+      });
 
-  it('should prevent duplicate emails', async () => {
-    const testUser = {
-      name: 'Test User',
-      email: 'test@example.com',
-      password: 'password123'
-    };
+      await signupHandler(req);
 
-    // Create first user
-    const { req: req1 } = createMocks({
-      method: 'POST',
-      body: testUser
+      expect(res._getStatusCode()).toBe(400);
+      const jsonResponse = await res._getJSONData();
+      expect(jsonResponse.error).toBe('Password must be at least 8 characters');
     });
-    await signupHandler(req1);
 
-    // Try to create second user with same email
-    const { req: req2 } = createMocks({
-      method: 'POST',
-      body: testUser
+    it('should return 400 for duplicate email', async () => {
+      // Create a user first
+      await User.create({
+        name: 'Existing User',
+        email: 'test@example.com',
+        password: 'password123'
+      });
+
+      const { req, res } = createMocks({
+        method: 'POST',
+        body: {
+          name: 'Test User',
+          email: 'test@example.com',
+          password: 'password123'
+        },
+      });
+
+      await signupHandler(req);
+
+      expect(res._getStatusCode()).toBe(400);
+      const jsonResponse = await res._getJSONData();
+      expect(jsonResponse.error).toBe('Email already registered');
     });
-    const response = await signupHandler(req2);
-    
-    expect(response.status).toBe(400);
-    const data = await response.json();
-    expect(data.error).toBe('Email already registered');
   });
 });
