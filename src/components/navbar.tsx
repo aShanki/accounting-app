@@ -17,7 +17,9 @@ export default function Navbar() {
   const { data: session, status } = useSession();
 
   const handleSignOut = () => {
-    signOut({ callbackUrl: '/login' });
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    const baseUrl = isDevelopment ? 'http://localhost:3000' : window.location.origin;
+    signOut({ callbackUrl: `${baseUrl}/login` });
   };
 
   // Get user initials for avatar

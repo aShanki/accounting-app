@@ -71,13 +71,19 @@ export const authOptions: NextAuthOptions = {
       }
       return session;
     },
+    async redirect({ url, baseUrl }) {
+      // Handle sign out redirect
+      if (url.startsWith('/login')) {
+        return process.env.NODE_ENV === 'development'
+          ? `${process.env.NEXTAUTH_URL_INTERNAL}/login`
+          : `${process.env.NEXTAUTH_URL}/login`;
+      }
+      return url;
+    }
   },
   secret: process.env.NEXTAUTH_SECRET,
   debug: process.env.NODE_ENV === 'development',
   useSecureCookies: process.env.NODE_ENV === 'production',
-  url: process.env.NODE_ENV === 'development' 
-    ? process.env.NEXTAUTH_URL_INTERNAL 
-    : process.env.NEXTAUTH_URL,
 };
 
 const handler = NextAuth(authOptions);
