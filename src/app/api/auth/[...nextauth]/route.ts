@@ -41,6 +41,19 @@ export const authOptions: NextAuthOptions = {
   ],
   session: {
     strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+  cookies: {
+    sessionToken: {
+      name: `${process.env.NODE_ENV === 'production' ? '__Secure-' : ''}next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+        domain: process.env.NODE_ENV === 'production' ? '.ashank.tech' : 'localhost'
+      }
+    }
   },
   pages: {
     signIn: "/login",
@@ -60,6 +73,11 @@ export const authOptions: NextAuthOptions = {
     },
   },
   secret: process.env.NEXTAUTH_SECRET,
+  debug: process.env.NODE_ENV === 'development',
+  useSecureCookies: process.env.NODE_ENV === 'production',
+  url: process.env.NODE_ENV === 'development' 
+    ? process.env.NEXTAUTH_URL_INTERNAL 
+    : process.env.NEXTAUTH_URL,
 };
 
 const handler = NextAuth(authOptions);
