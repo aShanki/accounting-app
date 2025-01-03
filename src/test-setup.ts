@@ -1,16 +1,17 @@
 import { TextEncoder, TextDecoder } from 'util';
-global.TextEncoder = TextEncoder;
-global.TextDecoder = TextDecoder;
-
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import mongoose from 'mongoose';
 import { jest } from '@jest/globals';
+
+global.TextEncoder = TextEncoder;
+global.TextDecoder = TextDecoder;
 
 let mongod: MongoMemoryServer;
 
 beforeAll(async () => {
   mongod = await MongoMemoryServer.create();
   const uri = mongod.getUri();
+  process.env.MONGODB_URI = uri;  // Set the environment variable
   await mongoose.connect(uri);
 });
 
@@ -30,4 +31,6 @@ afterAll(async () => {
   }
   await mongoose.connection.close();
   await mongod.stop();
+  // Clean up environment variable
+  delete process.env.MONGODB_URI;
 });

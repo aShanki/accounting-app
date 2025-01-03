@@ -1,23 +1,24 @@
-import { createMocks } from 'node-mocks-http';
+import { NextRequest, NextResponse } from 'next/server';
 import { POST as signupHandler } from '@/app/api/auth/signup/route';
 import User from '@/models/User';
 
 describe('Auth API', () => {
   describe('POST /api/auth/signup', () => {
     it('should create a new user successfully', async () => {
-      const { req, res } = createMocks({
+      const req = new NextRequest('http://localhost:3000/api/auth/signup', {
         method: 'POST',
-        body: {
+        body: JSON.stringify({
           name: 'Test User',
           email: 'test@example.com',
           password: 'password123'
-        },
+        })
       });
 
-      await signupHandler(req);
+      const res = await signupHandler(req);
+      expect(res).toBeInstanceOf(NextResponse);
+      expect(res.status).toBe(201);
 
-      const jsonResponse = await res._getJSONData();
-      expect(res._getStatusCode()).toBe(201);
+      const jsonResponse = await res.json();
       expect(jsonResponse.user).toBeDefined();
       expect(jsonResponse.user.email).toBe('test@example.com');
       expect(jsonResponse.user.name).toBe('Test User');
@@ -30,52 +31,52 @@ describe('Auth API', () => {
     });
 
     it('should return 400 for missing required fields', async () => {
-      const { req, res } = createMocks({
+      const req = new NextRequest('http://localhost:3000/api/auth/signup', {
         method: 'POST',
-        body: {
+        body: JSON.stringify({
           email: 'test@example.com',
           // missing name and password
-        },
+        })
       });
 
-      await signupHandler(req);
-
-      expect(res._getStatusCode()).toBe(400);
-      const jsonResponse = await res._getJSONData();
+      const res = await signupHandler(req);
+      expect(res.status).toBe(400);
+      
+      const jsonResponse = await res.json();
       expect(jsonResponse.error).toBe('Missing required fields');
     });
 
     it('should return 400 for invalid email format', async () => {
-      const { req, res } = createMocks({
+      const req = new NextRequest('http://localhost:3000/api/auth/signup', {
         method: 'POST',
-        body: {
+        body: JSON.stringify({
           name: 'Test User',
           email: 'invalid-email',
           password: 'password123'
-        },
+        })
       });
 
-      await signupHandler(req);
-
-      expect(res._getStatusCode()).toBe(400);
-      const jsonResponse = await res._getJSONData();
+      const res = await signupHandler(req);
+      expect(res.status).toBe(400);
+      
+      const jsonResponse = await res.json();
       expect(jsonResponse.error).toBeDefined();
     });
 
     it('should return 400 for password too short', async () => {
-      const { req, res } = createMocks({
+      const req = new NextRequest('http://localhost:3000/api/auth/signup', {
         method: 'POST',
-        body: {
+        body: JSON.stringify({
           name: 'Test User',
           email: 'test@example.com',
           password: 'short'
-        },
+        })
       });
 
-      await signupHandler(req);
-
-      expect(res._getStatusCode()).toBe(400);
-      const jsonResponse = await res._getJSONData();
+      const res = await signupHandler(req);
+      expect(res.status).toBe(400);
+      
+      const jsonResponse = await res.json();
       expect(jsonResponse.error).toBe('Password must be at least 8 characters');
     });
 
@@ -87,19 +88,19 @@ describe('Auth API', () => {
         password: 'password123'
       });
 
-      const { req, res } = createMocks({
+      const req = new NextRequest('http://localhost:3000/api/auth/signup', {
         method: 'POST',
-        body: {
+        body: JSON.stringify({
           name: 'Test User',
           email: 'test@example.com',
           password: 'password123'
-        },
+        })
       });
 
-      await signupHandler(req);
-
-      expect(res._getStatusCode()).toBe(400);
-      const jsonResponse = await res._getJSONData();
+      const res = await signupHandler(req);
+      expect(res.status).toBe(400);
+      
+      const jsonResponse = await res.json();
       expect(jsonResponse.error).toBe('Email already registered');
     });
   });

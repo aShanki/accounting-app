@@ -51,6 +51,17 @@ export async function POST(req: Request) {
 
   } catch (error: any) {
     console.error("Signup error:", error);
+    
+    // Handle Mongoose validation errors
+    if (error.name === 'ValidationError') {
+      const validationError = Object.values(error.errors)[0] as Error;
+      return NextResponse.json(
+        { error: validationError.message },
+        { status: 400 }
+      );
+    }
+
+    // Handle other errors
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
