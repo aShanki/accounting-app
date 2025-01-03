@@ -1,11 +1,10 @@
-import mongoose from 'mongoose';
+import mongoose, { CallbackError } from 'mongoose';
 
 const locationSchema = new mongoose.Schema({
   name: {
     type: String,
     required: true,
     unique: true,
-    index: true
   },
   description: {
     type: String,
@@ -26,25 +25,18 @@ const locationSchema = new mongoose.Schema({
   },
 });
 
-// Ensure indexes are created
-locationSchema.index({ name: 1 }, { unique: true });
-
-// Pre-save middleware to check for duplicates
+// Middleware to handle duplicate key errors
 locationSchema.pre('save', async function(next) {
-  const doc = this;
-  if (doc.isNew) {
-    try {
-      const exists = await (mongoose.models.Location || mongoose.model('Location', locationSchema))
-        .findOne({ name: doc.name });
-      if (exists) {
-        throw new Error('Location name must be unique');
-      }
-    } catch (error) {
-      next(error);
-      return;
+  try {
+    const Location = mongoose.model('Location');
+    const existingLocation = await Location.findOne({ name: this.name, _id: { $ne: this._id } });
+    if (existingLocation) {
+      throw new Error('Location name must be unique');
     }
+    next();
+  } catch (error) {
+    next(error as CallbackError);
   }
-  next();
 });
 
 export type LocationDocument = mongoose.Document & {

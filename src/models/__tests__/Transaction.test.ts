@@ -38,13 +38,19 @@ describe('Transaction Model', () => {
       amount: 100,
       note: 'Test transaction',
       type: 'INCOME',
-      locationId: locationId
+      locationId: locationId,
+      runningBalance: 1100 // Initial balance + transaction amount
     };
 
     const transaction = await Transaction.create(validTransaction);
     expect(transaction.amount).toBe(validTransaction.amount);
     expect(transaction.type).toBe(validTransaction.type);
     expect(transaction.locationId.toString()).toBe(validTransaction.locationId);
+    expect(transaction.runningBalance).toBe(validTransaction.runningBalance);
+
+    // Verify location balance was updated
+    const updatedLocation = await Location.findById(locationId);
+    expect(updatedLocation?.currentBalance).toBe(1100);
   });
 
   it('should fail to create transaction without required fields', async () => {
@@ -61,7 +67,8 @@ describe('Transaction Model', () => {
       amount: 100,
       note: 'Test transaction',
       type: 'INVALID',
-      locationId: locationId
+      locationId: locationId,
+      runningBalance: 1000
     };
 
     await expect(Transaction.create(invalidTransaction)).rejects.toThrow();
@@ -74,7 +81,8 @@ describe('Transaction Model', () => {
       amount: 100,
       note: 'Test transaction',
       type: 'INCOME',
-      locationId: invalidLocationId
+      locationId: invalidLocationId,
+      runningBalance: 1000
     };
 
     await expect(Transaction.create(transaction)).rejects.toThrow();
